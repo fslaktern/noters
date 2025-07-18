@@ -1,5 +1,5 @@
 use crate::backends::NoteRepository;
-use log::{debug, error, info, trace, warn};
+use log::{error, info, trace, warn};
 use nnsctf_pwn_1::{MenuError, NoteError, NoteValidationError, Result};
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -126,7 +126,7 @@ impl NoteService {
                 }
                 Err(_) => Err(NoteValidationError::ReferenceNotFound(rid).into()),
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<(String, String)>>>()?;
 
         // Expanding references: [[1]] -> Note #1's content
         let expanded = placeholders
