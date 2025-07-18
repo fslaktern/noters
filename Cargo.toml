@@ -1,0 +1,21 @@
+[package]
+name = "nnsctf-pwn-1"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+#strip = true      # Strip symbols
+opt-level = "s"   # Optimize for smaller size
+lto = true        # Link time optimizations, longer compile but smaller size
+codegen-units = 1 # Minimize size
+
+[dependencies]
+anyhow = "1.0.98"
+clap = { version = "4.5.41", features = ["derive"] }
+color-eyre = "0.6.5"
+colored = "3.0.0"
+env_logger = "0.11.8"
+log = "0.4.27"
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+tabled = "0.20.0"
+thiserror = "2.0.12"
