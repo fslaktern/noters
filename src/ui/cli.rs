@@ -30,7 +30,7 @@ impl IO for Cli {
         println!();
 
         input = input.trim().to_string();
-        trace!("Got input: {}", input);
+        trace!("Got input: {input}");
         Ok(input)
     }
 

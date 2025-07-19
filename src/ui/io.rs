@@ -53,12 +53,12 @@ impl TryFrom<u8> for MenuOption {
 
     fn try_from(n: u8) -> std::result::Result<Self, Self::Error> {
         match n {
-            1 => Ok(MenuOption::Create),
-            2 => Ok(MenuOption::Read),
-            3 => Ok(MenuOption::Update),
-            4 => Ok(MenuOption::Delete),
-            5 => Ok(MenuOption::List),
-            6 => Ok(MenuOption::AddFlag),
+            1 => Ok(Self::Create),
+            2 => Ok(Self::Read),
+            3 => Ok(Self::Update),
+            4 => Ok(Self::Delete),
+            5 => Ok(Self::List),
+            6 => Ok(Self::AddFlag),
             _ => Err(()),
         }
     }
@@ -68,12 +68,12 @@ impl TryFrom<u8> for MenuOption {
 impl fmt::Display for MenuOption {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self {
-            MenuOption::Create => "Create note",
-            MenuOption::Read => "Read note",
-            MenuOption::Update => "Update note",
-            MenuOption::Delete => "Delete note",
-            MenuOption::List => "List notes",
-            MenuOption::AddFlag => "Add note with flag",
+            Self::Create => "Create note",
+            Self::Read => "Read note",
+            Self::Update => "Update note",
+            Self::Delete => "Delete note",
+            Self::List => "List notes",
+            Self::AddFlag => "Add note with flag",
         };
         write!(f, "({}) {}", *self as u8, label)
     }
@@ -143,7 +143,7 @@ fn get_menu_input(io: &impl IO) -> Result<MenuOption> {
     match input.parse::<u8>() {
         Ok(n) => match MenuOption::try_from(n) {
             Ok(option) => Ok(option),
-            Err(_) => Err(NoteError::Menu(MenuError::InvalidOption(n))),
+            Err(()) => Err(NoteError::Menu(MenuError::InvalidOption(n))),
         },
         Err(_) => Err(NoteError::Menu(MenuError::ParseError(input))),
     }
@@ -185,14 +185,14 @@ fn handle_create(io: &impl IO, service: &NoteService) {
                 trace!("Got valid content: {}", &input);
                 break input;
             }
-            Err(e) => error!("Got invalid content: {}", e),
+            Err(e) => error!("Got invalid content: {e}"),
         }
     };
 
     match service.create_note(name, content) {
-        Ok(id) => info!("Note saved with ID: {}", id),
+        Ok(id) => info!("Note saved with ID: {id}"),
         Err(e) => error!("{e}"),
-    };
+    }
 }
 
 /// Prompt for a note ID, fetch and display the note
@@ -213,10 +213,10 @@ fn handle_read(io: &impl IO, service: &NoteService) {
         let input = io.get_input().expect("Failed getting note ID");
         match input.parse::<u16>() {
             Ok(id) => {
-                trace!("Got valid ID: {}", id);
+                trace!("Got valid ID: {id}");
                 break id;
             }
-            Err(e) => error!("Got invalid ID: {}", e),
+            Err(e) => error!("Got invalid ID: {e}"),
         }
     };
 
@@ -257,7 +257,7 @@ fn handle_update(io: &impl IO, service: &NoteService) {
         match service.read_note(id) {
             Ok(note) => break note,
             Err(e) => error!("{e}"),
-        };
+        }
     };
 
     let name: String = loop {
@@ -268,7 +268,7 @@ fn handle_update(io: &impl IO, service: &NoteService) {
                 trace!("Got valid name: {}", &input);
                 break input;
             }
-            Err(e) => error!("Got invalid name: {}", e),
+            Err(e) => error!("Got invalid name: {e}"),
         }
     };
 
@@ -283,7 +283,7 @@ fn handle_update(io: &impl IO, service: &NoteService) {
                 trace!("Got valid content: {}", &input);
                 break input;
             }
-            Err(e) => error!("Got invalid content: {}", e),
+            Err(e) => error!("Got invalid content: {e}"),
         }
     };
 
@@ -293,7 +293,7 @@ fn handle_update(io: &impl IO, service: &NoteService) {
     match service.update_note(note) {
         Ok(()) => info!("Successfully updated note"),
         Err(e) => error!("{e}"),
-    };
+    }
 }
 
 /// Prompt for note ID, confirm deletion, and delete
@@ -324,7 +324,7 @@ fn handle_delete(io: &impl IO, service: &NoteService) {
         match input.to_lowercase().as_str() {
             "y" | "ye" | "yes" | "ya" | "yuh" | "yarr" | "fuck yeah" => break,
             "n" | "nu uh" | "no" | "nah" | "hell naw" | "get yo bitchass outta here" => {
-                info!("Exiting. Not deleting note with ID: {}", id);
+                info!("Exiting. Not deleting note with ID: {id}");
                 return;
             }
             _ => warn!("Invalid input. Please enter 'y' or 'n'"),
@@ -332,9 +332,9 @@ fn handle_delete(io: &impl IO, service: &NoteService) {
     }
 
     match service.delete_note(id) {
-        Ok(()) => info!("Successfully deleted note with ID: {}", id),
+        Ok(()) => info!("Successfully deleted note with ID: {id}"),
         Err(e) => error!("{e}"),
-    };
+    }
 }
 
 /// Fetch all notes and display in a table
@@ -361,7 +361,7 @@ fn handle_list(io: &impl IO, service: &NoteService) {
 /// - `service`: Note service backend
 fn handle_add_flag(service: &NoteService) {
     match service.create_flag_note() {
-        Ok(id) => info!("Successfully added note containing flag, with ID: {}", id),
-        Err(e) => error!("Failed adding note containing flag: {}", e),
+        Ok(id) => info!("Successfully added note containing flag, with ID: {id}"),
+        Err(e) => error!("Failed adding note containing flag: {e}"),
     }
 }
