@@ -10,14 +10,13 @@ impl SqliteBackend {
     /// Creates a new `SqliteBackend` by opening the `SQLite` database at the given path.
     /// Also ensures that the `notes` table exists.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the database file cannot be opened or the `notes` table cannot be created.
-    /// This is intended to fail fast during startup.
-    #[must_use]
-    pub fn new(path: &str) -> Self {
-        let connection =
-            Connection::open(path).unwrap_or_else(|e| panic!("Failed opening DB at '{path}': {e}"));
+    /// `BackendError::DatabaseCreationError` if the database file cannot be opened
+    /// `BackendError::TableCreationError` if the `notes` table cannot be created.
+    pub fn new(path: &str) -> Result<Self> {
+        let connection = Connection::open(path)
+            .map_err(|_e| NoteError::Backend(BackendError::DatabaseCreationError))?;
 
         // Create notes table if it doesn't exist
         connection
@@ -32,8 +31,8 @@ impl SqliteBackend {
                 ",
                 [],
             )
-            .expect("Failed to create notes table");
-        Self { connection }
+            .map_err(|_e| NoteError::Backend(BackendError::TableCreationError))?;
+        Ok(Self { connection })
     }
 }
 
@@ -57,7 +56,7 @@ fn map_sqlite_error(e: rusqlite::Error) -> NoteError {
                 code
             ))),
         },
-        SqliteError::QueryReturnedNoRows => NoteError::Backend(BackendError::NoRows),
+        SqliteError::QueryReturnedNoRows => NoteError::Backend(BackendError::NoNotesFound),
         other => NoteError::Backend(BackendError::Other(anyhow::Error::new(other))),
     }
 }
@@ -85,7 +84,7 @@ impl NoteBackend for SqliteBackend {
     /// # Errors
     ///
     /// Returns:
-    /// - `BackendError::NoRows` if no note with the given ID exists.
+    /// - `BackendError::NoteNotFound` if no note with the given ID exists.
     /// - Other mapped `SQLite` errors for query failure.
     fn read(&self, id: u16) -> Result<Note> {
         self.connection
@@ -103,7 +102,7 @@ impl NoteBackend for SqliteBackend {
             )
             .optional()
             .map_err(map_sqlite_error)?
-            .ok_or(NoteError::Backend(BackendError::NoRows))
+            .ok_or(NoteError::Backend(BackendError::NoteNotFound(id)))
     }
 
     /// Reads a note by ID, returning only its ID, name, and owner (no content).
@@ -111,7 +110,7 @@ impl NoteBackend for SqliteBackend {
     /// # Errors
     ///
     /// Returns:
-    /// - `BackendError::NoRows` if no note with the given ID exists.
+    /// - `BackendError::NoteNotFound` if no note with the given ID exists.
     /// - Other mapped `SQLite` errors for query failure.
     fn read_partial(&self, id: u16) -> Result<PartialNote> {
         self.connection
@@ -128,7 +127,7 @@ impl NoteBackend for SqliteBackend {
             )
             .optional()
             .map_err(map_sqlite_error)?
-            .ok_or(NoteError::Backend(BackendError::NoRows))
+            .ok_or(NoteError::Backend(BackendError::NoteNotFound(id)))
     }
 
     /// Updates an existing note's name, owner, and content.
@@ -136,7 +135,7 @@ impl NoteBackend for SqliteBackend {
     /// # Errors
     ///
     /// Returns:
-    /// - `BackendError::NoRows` if no note with the given ID exists.
+    /// - `BackendError::NoteNotFound` if no note with the given ID exists.
     /// - Other backend errors if the update fails due to `SQLite` issues.
     fn update(&self, note: Note) -> Result<()> {
         let rows = self
@@ -148,7 +147,7 @@ impl NoteBackend for SqliteBackend {
             .map_err(map_sqlite_error)?;
 
         if rows == 0 {
-            Err(NoteError::Backend(BackendError::NoRows))
+            Err(NoteError::Backend(BackendError::NoteNotFound(note.id)))
         } else {
             Ok(())
         }
@@ -158,7 +157,7 @@ impl NoteBackend for SqliteBackend {
     /// # Errors
     ///
     /// Returns:
-    /// - `BackendError::NoRows` if the note was not found.
+    /// - `BackendError::NoteNotFound` if the note was not found.
     /// - Other backend errors if the deletion operation fails.
     fn delete(&self, id: u16) -> Result<()> {
         let rows = self
@@ -167,7 +166,7 @@ impl NoteBackend for SqliteBackend {
             .map_err(map_sqlite_error)?;
 
         if rows == 0 {
-            Err(NoteError::Backend(BackendError::NoRows))
+            Err(NoteError::Backend(BackendError::NoteNotFound(id)))
         } else {
             Ok(())
         }

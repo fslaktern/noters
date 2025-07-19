@@ -1,9 +1,8 @@
 use crate::app::NoteService;
 use crate::backends::{FilesystemBackend, SqliteBackend};
-use crate::NoteBackend;
+use crate::{NoteBackend, NoteError, NoteValidationError, Result};
 
 use clap::{Parser, Subcommand};
-use log::error;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about)]
@@ -38,30 +37,29 @@ enum Backend {
 ///
 /// A `NoteService` instance initialized with the parsed arguments.
 ///
-/// # Notes
+/// # Errors
 ///
-/// - Checks if the username length exceeds 32 characters and logs an error if it does.
-/// - Creates a `NoteBackend` instance based on the specified backend type and initializes a `NoteService` with it.
-#[must_use]
-pub fn handle_args() -> NoteService {
+/// - `NoteValidationError::UsernameTooLong` if the username length exceeds 32 characters
+/// - Tries creating a `NoteBackend` instance based on the specified backend type and initializes a `NoteService` with it. Any errors are forwarded
+pub fn handle_args() -> Result<NoteService> {
     let args = Args::parse();
 
     // Hard limit on 32 characters per username
     if args.user.len() > 32 {
-        error!("The chosen username is too long. It should be less than or equal to 32 characters");
+        return Err(NoteError::Validation(NoteValidationError::UsernameTooLong));
     }
 
     // Allow any struct that implements NoteBackend, and store on heap because size is unknown at compile time
     let repo: Box<dyn NoteBackend> = match args.backend {
-        Backend::Filesystem { path } => Box::new(FilesystemBackend::new(&path)),
-        Backend::Sqlite { path } => Box::new(SqliteBackend::new(&path)),
+        Backend::Filesystem { path } => Box::new(FilesystemBackend::new(&path)?),
+        Backend::Sqlite { path } => Box::new(SqliteBackend::new(&path)?),
     };
 
-    NoteService::new(
+    Ok(NoteService::new(
         repo,
         args.user,
         args.max_name_size,
         args.max_content_size,
         args.max_note_count,
-    )
+    ))
 }

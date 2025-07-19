@@ -295,6 +295,7 @@ impl NoteService {
     /// # Returns
     ///
     /// A vector of note IDs found inside double brackets.
+    #[allow(clippy::unused_self)]
     fn get_references(&self, s: &str) -> Vec<u16> {
         s.split_whitespace()
             .filter_map(|tok| {

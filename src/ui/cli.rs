@@ -45,6 +45,11 @@ impl IO for Cli {
     ///
     /// Returns an error if writing to stdout or reading from stdin fails.
     fn get_input_until(&self, stop_at: &str) -> Result<String> {
+        // Prevent user from not being able to escape input
+        // if stop_at is a whitespace character, as the input
+        // has its whitespace trimmed away before matching
+        assert_ne!(stop_at.trim(), "");
+
         let mut input = String::new();
         loop {
             print!("> ");
@@ -78,7 +83,6 @@ impl IO for Cli {
         for o in options {
             println!("{o}");
         }
-        println!();
     }
 
     /// Renders a table of partial notes in `psql` style to stdout.
@@ -89,7 +93,7 @@ impl IO for Cli {
     fn show_notes_list(&self, partial_notes: Vec<PartialNote>) {
         let mut table = Table::new(partial_notes);
         table.with(Style::psql());
-        println!("{table}");
+        println!("{table}\n");
     }
 
     /// Prints a bolded title followed by a blank line.
@@ -98,7 +102,7 @@ impl IO for Cli {
     ///
     /// - `title`: The text to render as the title.
     fn show_title(&self, title: &str) {
-        println!("\n{}\n", title.to_string().bold());
+        println!("{}\n", title.to_string().bold());
     }
 
     /// Prints plain text to stdout.

@@ -2,11 +2,10 @@
 #![deny(clippy::complexity)]
 #![deny(clippy::correctness)]
 #![deny(clippy::nursery)]
-#![deny(clippy::pedantic)]
 #![deny(clippy::perf)]
 #![deny(clippy::style)]
 #![deny(clippy::suspicious)]
-// l#![warn(clippy::restriction)]
+#![deny(clippy::pedantic)]
 
 use std::io;
 use tabled::Tabled;
@@ -36,13 +35,48 @@ pub struct PartialNote {
     pub name: String,
 }
 
-// Trait to be implemented by all backends
+/// Trait to be implemented by all backends that manage storing and retrieving notes
 pub trait NoteBackend {
+    /// Stores a new note in the backend and returns the note ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the note could not be inserted
     fn create(&self, note: Note) -> Result<u16>;
+
+    /// Fetches the full contents of a note by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the note does not exist or the query fails
     fn read(&self, id: u16) -> Result<Note>;
+
+    /// Fetches a partial view of a note (ID, name, owner) by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the note does not exist or the query fails
     fn read_partial(&self, id: u16) -> Result<PartialNote>;
+
+    /// Updates an existing note, replacing name, owner, and content
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the update fails or the note is not found
     fn update(&self, note: Note) -> Result<()>;
+
+    /// Deletes a note by ID from the backend
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the note is not found or the deletion fails
     fn delete(&self, id: u16) -> Result<()>;
+
+    /// Returns a list of all notes in the backend with partial details (ID, name, owner)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the query fails
     fn list(&self) -> Result<Vec<PartialNote>>;
 }
 
@@ -104,16 +138,40 @@ pub enum NoteValidationError {
 
     #[error("Reference not found with ID: {0}")]
     ReferenceNotFound(u16),
+
+    #[error("The chosen username is too long. It should be less than or equal to 32 characters")]
+    UsernameTooLong,
 }
 
 // Enum for all possible repository/backend errors
 #[derive(Debug, Error)]
 pub enum BackendError {
     #[error("Database file not found")]
-    DatabaseNotFound,
+    DatabaseCreationError,
 
-    #[error("Notes table not found")]
-    TableNotFound,
+    #[error("Failed creating `notes` table in database")]
+    TableCreationError,
+
+    #[error("Failed creating directory for notes")]
+    DirectoryCreationError(io::Error),
+
+    #[error("Failed creating file for note data")]
+    FileCreationError(io::Error),
+
+    #[error("Failed writing note data to file")]
+    FileWriteError(io::Error),
+
+    #[error("Failed reading note data from file")]
+    FileReadError(io::Error),
+
+    #[error("Failed reading directory contents")]
+    DirectoryReadError(io::Error),
+
+    #[error("Note is improperly formatted. Failed reading all fields")]
+    NoteCorrupted,
+
+    #[error("Note already exists")]
+    Duplicate,
 
     #[error("Database is locked or busy")]
     DatabaseBusy,
@@ -127,20 +185,17 @@ pub enum BackendError {
     #[error("Backend connection timed out")]
     Timeout,
 
-    #[error("Didn't find any notes with that ID")]
-    NoRows,
-
     #[error("Database file is not a valid SQLite databasee")]
     NotADatabase,
 
     #[error("Database schema has changed unexpectedly")]
     SchemaChanged,
 
-    #[error("No files with ID: {0}")]
-    FileNotFound(u16),
+    #[error("No notes with ID: {0}")]
+    NoteNotFound(u16),
 
-    #[error("Can't find notes directory: {0}")]
-    DirectoryNotFound(String),
+    #[error("No notes found")]
+    NoNotesFound,
 
     #[error("Insufficient permissions")]
     PermissionDenied,

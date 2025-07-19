@@ -1,61 +1,194 @@
-use super::{Note, NoteBackend, PartialNote, Result};
+use super::{BackendError, Note, NoteBackend, NoteError, PartialNote, Result};
+use std::{
+    fs::{self, File},
+    io::{Read, Write},
+    path::PathBuf,
+};
 
 #[derive(Debug)]
-pub struct FilesystemBackend {}
+pub struct FilesystemBackend {
+    base_path: PathBuf,
+}
 
 impl FilesystemBackend {
-    /// Creates a new instance of the `FilesystemBackend`.
+    /// Creates a new `FilesystemBackend` instance with the given base directory
     ///
-    /// # Arguments
+    /// # Errors
     ///
-    /// * `path` - A `String` representing the path to the notes storage (currently unused).
+    /// Returns `BackendError::DirectoryCreationError` if the base directory cannot be created
+    pub fn new(path: &str) -> Result<Self> {
+        let base_path = PathBuf::from(path);
+        fs::create_dir_all(&base_path)
+            .map_err(|e| NoteError::Backend(BackendError::DirectoryCreationError(e)))?;
+        Ok(Self { base_path })
+    }
+
+    /// Constructs a filesystem path for the note file based on its ID
+    fn note_path(&self, id: u16) -> PathBuf {
+        self.base_path.join(format!("{id:05}.note"))
+    }
+
+    /// Lists all note files in the base directory
     ///
-    /// # Returns
+    /// # Errors
     ///
-    /// A new `FilesystemBackend` instance.
-    #[must_use]
-    pub fn new(path: &str) -> Self {
-        dbg!(&path);
-        Self {}
+    /// Returns `BackendError::DirectoryReadError` if the directory cannot be read or a file entry cannot be processed
+    fn list_note_files(&self) -> Result<Vec<PathBuf>> {
+        let entries = fs::read_dir(&self.base_path)
+            .map_err(BackendError::DirectoryReadError)
+            .map_err(NoteError::Backend)?;
+
+        let mut files = Vec::new();
+
+        for entry_result in entries {
+            let entry = entry_result
+                .map_err(BackendError::DirectoryReadError)
+                .map_err(NoteError::Backend)?;
+
+            let file_type = entry
+                .file_type()
+                .map_err(BackendError::DirectoryReadError)
+                .map_err(NoteError::Backend)?;
+
+            if file_type.is_file() {
+                files.push(entry.path());
+            }
+        }
+
+        Ok(files)
     }
 }
 
 impl NoteBackend for FilesystemBackend {
+    /// Creates a new note by writing it to the filesystem as a file
+    ///
+    /// # Errors
+    ///
+    /// Returns:
+    /// - `BackendError::Duplicate` if a note with the same ID already exists
+    /// - `BackendError::FileCreationError` if the file cannot be created
+    /// - `BackendError::FileWriteError` if writing to the file fails
     fn create(&self, note: Note) -> Result<u16> {
-        dbg!(&note);
-        Ok(0)
+        let path = self.note_path(note.id);
+        if path.exists() {
+            return Err(NoteError::Backend(BackendError::Duplicate));
+        }
+
+        let mut file = File::create(&path)
+            .map_err(|e| NoteError::Backend(BackendError::FileCreationError(e)))?;
+        let data = format!("{}\n{}\n{}", note.name, note.owner, note.content);
+        file.write_all(data.as_bytes())
+            .map_err(|e| NoteError::Backend(BackendError::FileWriteError(e)))?;
+        Ok(note.id)
     }
 
+    /// Reads a note file by ID and returns the full note
+    ///
+    /// # Errors
+    ///
+    /// Returns:
+    /// - `BackendError::NoteNotFound` if the note file does not exist
+    /// - `BackendError::FileReadError` if the file cannot be read
+    /// - `BackendError::NoteCorrupted` if the file does not contain at least two lines (name and owner)
     fn read(&self, id: u16) -> Result<Note> {
-        dbg!(&id);
+        let path = self.note_path(id);
+        let mut file =
+            File::open(&path).map_err(|_| NoteError::Backend(BackendError::NoteNotFound(id)))?;
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .map_err(|e| NoteError::Backend(BackendError::FileReadError(e)))?;
+
+        let mut lines = contents.lines();
+        let name = lines
+            .next()
+            .ok_or(NoteError::Backend(BackendError::NoteCorrupted))?;
+        let owner = lines
+            .next()
+            .ok_or(NoteError::Backend(BackendError::NoteCorrupted))?;
+        let content = lines.collect::<Vec<&str>>().join("\n");
+
+        if content.trim().is_empty() {
+            return Err(NoteError::Backend(BackendError::NoteCorrupted));
+        }
+
         Ok(Note {
-            id: 0,
-            name: "Hello world".to_string(),
-            owner: "fslaktern".to_string(),
-            content: "I am delighted to exist!".to_string(),
+            id,
+            name: name.to_string(),
+            owner: owner.to_string(),
+            content,
         })
     }
 
+    /// Reads only the ID, name, and owner of a note by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as `read`, since it delegates to it
     fn read_partial(&self, id: u16) -> Result<PartialNote> {
-        dbg!(&id);
+        let note = self.read(id)?;
         Ok(PartialNote {
-            id: 0,
-            name: "Hello world".to_string(),
-            owner: "fslaktern".to_string(),
+            id: note.id,
+            name: note.name,
+            owner: note.owner,
         })
     }
 
+    /// Updates an existing note file with new name, owner, and content
+    ///
+    /// # Errors
+    ///
+    /// Returns:
+    /// - `BackendError::NoteNotFound` if the note file does not exist
+    /// - `BackendError::FileCreationError` if the file cannot be reopened for writing
+    /// - `BackendError::FileWriteError` if writing to the file fails
     fn update(&self, note: Note) -> Result<()> {
-        dbg!(&note);
+        let path = self.note_path(note.id);
+        if !path.exists() {
+            return Err(NoteError::Backend(BackendError::NoteNotFound(note.id)));
+        }
+
+        let mut file = File::create(&path)
+            .map_err(|e| NoteError::Backend(BackendError::FileCreationError(e)))?;
+        let data = format!("{}\n{}\n{}", note.name, note.owner, note.content);
+        file.write_all(data.as_bytes())
+            .map_err(|e| NoteError::Backend(BackendError::FileWriteError(e)))?;
         Ok(())
     }
 
+    /// Deletes a note file by ID
+    ///
+    /// # Errors
+    ///
+    /// Returns `BackendError::NoteNotFound` if the file does not exist or cannot be removed
     fn delete(&self, id: u16) -> Result<()> {
-        dbg!(&id);
-        Ok(())
+        let path = self.note_path(id);
+        fs::remove_file(&path).map_err(|_| NoteError::Backend(BackendError::NoteNotFound(id)))
     }
 
+    /// Lists all notes in the filesystem by parsing their filenames and reading partial metadata
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading the list of note files fails
+    ///
+    /// # Panics
+    ///
+    /// Does not panic, and instead silently skips corrupt or unreadable notes
     fn list(&self) -> Result<Vec<PartialNote>> {
-        Ok(vec![])
+        let mut notes = Vec::new();
+
+        for file_path in self.list_note_files()? {
+            if let Some(stem) = file_path.file_stem().and_then(|s| s.to_str()) {
+                if let Ok(id) = stem.parse::<u16>() {
+                    if let Ok(note) = self.read_partial(id) {
+                        notes.push(note);
+                    }
+                }
+            }
+        }
+
+        notes.sort_by_key(|n| n.id);
+        Ok(notes)
     }
 }

@@ -4,7 +4,7 @@ description = "Blazingly fast, 100% memory-safe, CRUD-compliant, cross platform 
 license = "WTFPL"
 keywords = ["noters", "notes", "cli", "hexagonal", "ctf"]
 categories = ["notes", "cli", "hexagonal", "ctf"]
-repository = "https://github.com/fslaktern/noters"
+repository = "https://github.com/fslaktern/nnsctf-pwn-noters.git"
 
 version = "0.1.0"
 edition = "2024"

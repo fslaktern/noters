@@ -6,5 +6,5 @@ use noters::ui::io;
 ///
 /// Invokes the I/O run loop to start the note-taking interface
 fn main() {
-    io::run();
+    io::run()
 }
