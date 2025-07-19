@@ -117,8 +117,14 @@ pub enum BackendError {
     #[error("Connection timed out")]
     Timeout,
 
-    #[error("No rows with ID: {0}")]
-    NoRows(u16),
+    #[error("Requested data was not found")]
+    NoRows,
+
+    #[error("Database file is not a valid SQLite databasee")]
+    NotADatabase,
+
+    #[error("Database schema has changed unexpectedly")]
+    SchemaChanged,
 
     #[error("No files with ID: {0}")]
     FileNotFound(u16),

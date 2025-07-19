@@ -36,20 +36,14 @@ fn map_sqlite_error(e: rusqlite::Error) -> NoteError {
         SqliteError::SqliteFailure(code, _) => match code.code {
             ErrorCode::DatabaseBusy => NoteError::Backend(BackendError::Timeout),
             ErrorCode::PermissionDenied => NoteError::Backend(BackendError::PermissionDenied),
-            ErrorCode::NotADatabase => {
-                NoteError::Backend(BackendError::Other(anyhow::anyhow!("Not a database")))
-            }
-            ErrorCode::SchemaChanged => {
-                NoteError::Backend(BackendError::Other(anyhow::anyhow!("Schema changed")))
-            }
+            ErrorCode::NotADatabase => NoteError::Backend(BackendError::NotADatabase),
+            ErrorCode::SchemaChanged => NoteError::Backend(BackendError::SchemaChanged),
             _ => NoteError::Backend(BackendError::Other(anyhow::anyhow!(
                 "SQLite error: {:?}",
                 code
             ))),
         },
-        SqliteError::QueryReturnedNoRows => {
-            NoteError::Backend(BackendError::Other(anyhow::anyhow!("No rows found")))
-        }
+        SqliteError::QueryReturnedNoRows => NoteError::Backend(BackendError::NoRows),
         other => NoteError::Backend(BackendError::Other(anyhow::Error::new(other))),
     }
 }
@@ -81,7 +75,7 @@ impl NoteBackend for SqliteBackend {
             )
             .optional()
             .map_err(map_sqlite_error)?
-            .ok_or(NoteError::Backend(BackendError::NoRows(id)))
+            .ok_or(NoteError::Backend(BackendError::NoRows))
     }
 
     fn read_partial(&self, id: u16) -> Result<PartialNote> {
@@ -99,7 +93,7 @@ impl NoteBackend for SqliteBackend {
             )
             .optional()
             .map_err(map_sqlite_error)?
-            .ok_or(NoteError::Backend(BackendError::NoRows(id)))
+            .ok_or(NoteError::Backend(BackendError::NoRows))
     }
 
     fn update(&self, note: Note) -> Result<()> {
@@ -112,7 +106,7 @@ impl NoteBackend for SqliteBackend {
             .map_err(map_sqlite_error)?;
 
         if rows == 0 {
-            Err(NoteError::Backend(BackendError::NoRows(note.id)))
+            Err(NoteError::Backend(BackendError::NoRows))
         } else {
             Ok(())
         }
@@ -125,7 +119,7 @@ impl NoteBackend for SqliteBackend {
             .map_err(map_sqlite_error)?;
 
         if rows == 0 {
-            Err(NoteError::Backend(BackendError::NoRows(id)))
+            Err(NoteError::Backend(BackendError::NoRows))
         } else {
             Ok(())
         }
