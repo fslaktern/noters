@@ -26,8 +26,8 @@ A logic flaw in the `delete_note()` function in `app.rs`(line 146) introduces a 
             // Read content and find all references
             // Save ID to Vec if it contains a backlink
             // to the note we're trying to delete
--            let content = self.repo.read(id)?.content;
-+            let content = self.repo.read(partial_note.id)?.content;
+-           let content = self.repo.read(id)?.content;
++           let content = self.repo.read(partial_note.id)?.content;
             let references = NoteService::get_references(&content);
             if references.contains(&id) {
                 backlinks.push(partial_note.id);
@@ -64,12 +64,12 @@ Additionally, `read_note()` in `app.rs` (line 80) fails to verify ownership for 
             .into_iter()
             .map(|rid| match self.repo.read(rid) {
                 Ok(ref_note) => {
-+                    // Make sure user has permission to read referenced note
-+                    if ref_note.owner != self.user {
-+                        return Err(NoteError::Validation(
-+                            NoteValidationError::PermissionDenied(ref_note.id),
-+                        ));
-+                    }
++                   // Make sure user has permission to read referenced note
++                   if ref_note.owner != self.user {
++                       return Err(NoteError::Validation(
++                           NoteValidationError::PermissionDenied(ref_note.id),
++                       ));
++                   }
 +
                     let placeholder = format!("[[{rid}]]");
                     let expansion = format!(
@@ -170,12 +170,3 @@ Reference to first note:
 -------------------------------
 ```
 
-## Summary
-
-This challenge demonstrates how a subtle logic error (and missing access control) leads to:
-
-- Bypass of reference integrity checks
-- Unauthorized data disclosure
-- Use-after-free style bug, via note ID reuse
-
-Even in "memory-safe" applications, logic bugs can behave like memory corruption when IDs are reused and trust boundaries are improperly enforced.
