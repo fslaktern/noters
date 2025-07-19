@@ -26,16 +26,16 @@ src/
 ├── app.rs              ← Application service (NoteService)
 ├── lib.rs              ← Domain: Note, PartialNote, trait NoteRepository
 ├── main.rs             ← Entry point (CLI startup)
+├── backends.rs
 ├── backends/           ← Outbound interfaces
-│   ├── mod.rs
 │   ├── filesystem.rs   ← FilesystemBackend (implements NoteRepository)
 │   └── sqlite.rs       ← SqliteBackend (implements NoteRepository)
+├── ui.rs
 ├── ui/                 ← Inbound interfaces
-│   ├── mod.rs
 │   ├── input.rs        ← Input handling and requirement for inbound adapters
 │   └── cli.rs          ← CLI user interface (input handling)
+├── setup.rs
 └── setup/              ← Runtime setup & configuration
-│   ├── mod.rs
     ├── arguments.rs    ← CLI args (Backend::Sqlite etc.)
     └── logging.rs      ← Setup for tracing/logging
 ```
