@@ -1,3 +1,13 @@
+#![deny(clippy::cargo)]
+#![deny(clippy::complexity)]
+#![deny(clippy::correctness)]
+#![deny(clippy::nursery)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::perf)]
+#![deny(clippy::style)]
+#![deny(clippy::suspicious)]
+// l#![warn(clippy::restriction)]
+
 use std::io;
 use tabled::Tabled;
 use thiserror::Error;
@@ -47,9 +57,6 @@ pub enum NoteError {
 
     #[error(transparent)]
     Menu(#[from] MenuError),
-
-    #[error("Unexpected error: {0}")]
-    Unexpected(#[from] anyhow::Error),
 }
 
 // Enum for all possible menu input errors
@@ -57,10 +64,13 @@ pub enum NoteError {
 pub enum MenuError {
     #[error("Failed to read from stdin: {0}")]
     StdinReadError(io::Error),
+
     #[error("Couldn't convert '{0}' to a number. Please enter a number 1-6")]
     ParseError(String),
+
     #[error("Couldn't convert '{0}' to a MenuOption. Please enter a number 1-6")]
     InvalidOption(u8),
+
     #[error("Failed writing to stdout")]
     StdoutWriteError(io::Error),
 }
@@ -102,7 +112,7 @@ pub enum BackendError {
     #[error("Database file not found")]
     DatabaseNotFound,
 
-    #[error("Table not found")]
+    #[error("Notes table not found")]
     TableNotFound,
 
     #[error("Database is locked or busy")]
@@ -114,10 +124,10 @@ pub enum BackendError {
     #[error("SQL logic error or misuse of SQLite")]
     SqlLogicError,
 
-    #[error("Connection timed out")]
+    #[error("Backend connection timed out")]
     Timeout,
 
-    #[error("Requested data was not found")]
+    #[error("Didn't find any notes with that ID")]
     NoRows,
 
     #[error("Database file is not a valid SQLite databasee")]

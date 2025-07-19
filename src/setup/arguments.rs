@@ -32,6 +32,17 @@ enum Backend {
     },
 }
 
+/// Parses command-line arguments and initializes a `NoteService` based on the provided arguments.
+///
+/// # Returns
+///
+/// A `NoteService` instance initialized with the parsed arguments.
+///
+/// # Notes
+///
+/// - Checks if the username length exceeds 32 characters and logs an error if it does.
+/// - Creates a `NoteBackend` instance based on the specified backend type and initializes a `NoteService` with it.
+#[must_use]
 pub fn handle_args() -> NoteService {
     let args = Args::parse();
 
@@ -40,12 +51,10 @@ pub fn handle_args() -> NoteService {
         error!("The chosen username is too long. It should be less than or equal to 32 characters");
     }
 
-    dbg!(&args);
-
     // Allow any struct that implements NoteBackend, and store on heap because size is unknown at compile time
     let repo: Box<dyn NoteBackend> = match args.backend {
-        Backend::Filesystem { path } => Box::new(FilesystemBackend::new(path)),
-        Backend::Sqlite { path } => Box::new(SqliteBackend::new(path)),
+        Backend::Filesystem { path } => Box::new(FilesystemBackend::new(&path)),
+        Backend::Sqlite { path } => Box::new(SqliteBackend::new(&path)),
     };
 
     NoteService::new(

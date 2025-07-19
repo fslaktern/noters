@@ -1,27 +1,28 @@
-use super::*;
-
+use super::{MenuError, NoteError, PartialNote, Result};
 use crate::app::NoteService;
 use crate::setup::{arguments, logging};
 use crate::ui::cli;
+
+use log::{error, info, trace, warn};
 use std::fmt;
 
+/// Abstraction for input/output
 pub trait IO {
+    /// Read a trimmed line of input ending at newline
     fn get_input(&self) -> Result<String>;
+    /// Read multiple lines until a trimmed line equals `stop_at`
     fn get_input_until(&self, stop_at: &str) -> Result<String>;
-
+    /// Display a list of selectable options
     fn show_menu(&self, options: &[impl std::fmt::Display]);
+    /// Display a bolded title
     fn show_title(&self, title: &str);
-    fn show_table(&self, table: Vec<PartialNote>);
-
+    /// Render a table of partial notes
+    fn show_notes_list(&self, table: Vec<PartialNote>);
+    /// Print a plain text message
     fn show_text(&self, msg: &str);
-    fn show_error(&self, msg: &str);
-    fn show_warn(&self, msg: &str);
-    fn show_info(&self, msg: &str);
-    fn show_debug(&self, msg: &str);
-    fn show_trace(&self, msg: &str);
 }
 
-// All UI menu options
+/// CRUD and listing actions available in the menu
 #[derive(Debug, Clone, Copy)]
 pub enum MenuOption {
     Create = 1,
@@ -32,7 +33,7 @@ pub enum MenuOption {
     AddFlag = 6,
 }
 
-// Array of all menu options. Used for iteration
+/// All menu options in display order
 pub const ALL_MENU_OPTIONS: [MenuOption; 6] = [
     MenuOption::Create,
     MenuOption::Read,
@@ -42,7 +43,11 @@ pub const ALL_MENU_OPTIONS: [MenuOption; 6] = [
     MenuOption::AddFlag,
 ];
 
-// Convert integer to MenuOption
+/// Convert a numeric choice into a `MenuOption`
+///
+/// # Errors
+///
+/// Returns `Err(())` if the value does not map to a valid variant
 impl TryFrom<u8> for MenuOption {
     type Error = ();
 
@@ -59,7 +64,7 @@ impl TryFrom<u8> for MenuOption {
     }
 }
 
-// Display a menu option with number and label
+/// Show the option number and label, e.g. `(1) Create note`
 impl fmt::Display for MenuOption {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self {
@@ -74,7 +79,14 @@ impl fmt::Display for MenuOption {
     }
 }
 
-// Route selected menu option to its handler function
+/// Dispatch chosen `MenuOption` to its handler
+///
+/// # Parameters
+///
+/// - `io`: I/O implementation
+/// - `service`: Note service backend
+/// - `option`: Selected menu option
+#[must_use]
 fn handle_menu_option(io: &impl IO, service: &NoteService, option: MenuOption) {
     match option {
         MenuOption::Create => handle_create(io, service),
@@ -82,10 +94,20 @@ fn handle_menu_option(io: &impl IO, service: &NoteService, option: MenuOption) {
         MenuOption::Update => handle_update(io, service),
         MenuOption::Delete => handle_delete(io, service),
         MenuOption::List => handle_list(io, service),
-        MenuOption::AddFlag => handle_add_flag(io, service),
+        MenuOption::AddFlag => handle_add_flag(service),
     }
 }
 
+/// Initialize logging, parse args, and enters the main menu loop
+///
+/// # Panics
+///
+/// Unreachable branch when an unexpected `NoteError` occurs
+///
+/// # Errors
+///
+/// Logs `MenuError` variants but never returns
+#[must_use]
 pub fn run() {
     logging::setup_log();
     let service = arguments::handle_args();
@@ -95,43 +117,48 @@ pub fn run() {
         io.show_menu(&ALL_MENU_OPTIONS);
         match get_menu_input(&io) {
             Ok(opt) => handle_menu_option(&io, &service, opt),
-            Err(NoteError::Menu(e)) => io.show_error(&format!("{}", e)),
+            Err(NoteError::Menu(e)) => error!("{e}"),
             Err(_) => unreachable!(),
         }
     }
 }
 
-// Prompt for menu option input and return parsed option
+/// Try parsing input as `MenuOption` or return an error
+///
+/// # Parameters
+///
+/// - `io`: I/O implementation
+///
+/// # Returns
+///
+/// The chosen `MenuOption` on success
+///
+/// # Errors
+///
+/// Returns `NoteError::Menu(MenuError::ParseError)` if input is not an integer
+/// Returns `NoteError::Menu(MenuError::InvalidOption)` if integer is out of range
 fn get_menu_input(io: &impl IO) -> Result<MenuOption> {
-    loop {
-        io.show_title("Choose option:");
-        let input = io.get_input()?;
+    let input = io.get_input()?;
 
-        match input.parse::<u8>() {
-            Ok(n) => match MenuOption::try_from(n) {
-                Ok(option) => return Ok(option),
-                Err(_) => {
-                    io.show_error(&format!("{}", MenuError::InvalidOption(n)));
-                    continue;
-                }
-            },
-            Err(_) => {
-                io.show_error(&format!("{}", MenuError::ParseError(input)));
-                continue;
-            }
-        }
+    match input.parse::<u8>() {
+        Ok(n) => match MenuOption::try_from(n) {
+            Ok(option) => Ok(option),
+            Err(_) => Err(NoteError::Menu(MenuError::InvalidOption(n))),
+        },
+        Err(_) => Err(NoteError::Menu(MenuError::ParseError(input))),
     }
 }
 
-// fn handle_menu_error(e: crate::MenuError) {
-//     use crate::MenuError::*;
-//     match e {
-//         ParseError => show_error("Failed to parse your input"),
-//         StdinReadError(err) => show_error("Error reading menu choice: {}", err),
-//     }
-// }
-
-// Handle "create note" menu option
+/// Prompt for note creation and invoke service
+///
+/// # Parameters
+///
+/// - `io`: I/O implementation
+/// - `service`: Note service backend
+///
+/// # Panics
+///
+/// If reading name or content fails unexpectedly
 fn handle_create(io: &impl IO, service: &NoteService) {
     io.show_title("Create note");
 
@@ -140,10 +167,10 @@ fn handle_create(io: &impl IO, service: &NoteService) {
         let input = io.get_input().expect("Failed getting note name");
         match NoteService::validate_name(&input, service.max_name_size) {
             Ok(()) => {
-                io.show_trace(&format!("Got valid name: {}", &input));
+                trace!("Got valid name: {input}");
                 break input;
             }
-            Err(e) => io.show_error(&format!("Got invalid name: {}", e)),
+            Err(e) => error!("{e}"),
         }
     };
 
@@ -155,21 +182,29 @@ fn handle_create(io: &impl IO, service: &NoteService) {
             .expect("Failed getting note content");
         match NoteService::validate_content(&input, service.max_content_size) {
             Ok(()) => {
-                io.show_trace(&format!("Got valid content: {}", &input));
+                trace!("Got valid content: {}", &input);
                 break input;
             }
-            Err(e) => io.show_error(&format!("Got invalid content: {}", e)),
+            Err(e) => error!("Got invalid content: {}", e),
         }
     };
 
     match service.create_note(name, content) {
-        Ok(id) => io.show_info(&format!("Note saved with ID: {}", id)),
-        Err(NoteError::Backend(e)) => io.show_error(&format!("Backend error: {}", e)),
-        Err(e) => io.show_error(&format!("{}", e)),
+        Ok(id) => info!("Note saved with ID: {}", id),
+        Err(e) => error!("{e}"),
     };
 }
 
-// Handle "read note" menu option
+/// Prompt for a note ID, fetch and display the note
+///
+/// # Parameters
+///
+/// - `io`: I/O implementation
+/// - `service`: Note service backend
+///
+/// # Panics
+///
+/// If reading the ID fails unexpectedly
 fn handle_read(io: &impl IO, service: &NoteService) {
     io.show_title("Read note");
 
@@ -178,26 +213,34 @@ fn handle_read(io: &impl IO, service: &NoteService) {
         let input = io.get_input().expect("Failed getting note ID");
         match input.parse::<u16>() {
             Ok(id) => {
-                io.show_trace(&format!("Got valid ID: {}", id));
+                trace!("Got valid ID: {}", id);
                 break id;
             }
-            Err(e) => io.show_error(&format!("Got invalid ID: {}", e)),
+            Err(e) => error!("Got invalid ID: {}", e),
         }
     };
 
     match service.read_note(id) {
         Ok(note) => {
-            io.show_text("{:->20}");
+            io.show_text(&"-".repeat(20));
             io.show_text(&format!("#{}: {}\n", note.id, note.name));
             io.show_text(&note.content);
-            io.show_text("{:->20}");
+            io.show_text(&"-".repeat(20));
         }
-        Err(NoteError::Backend(e)) => io.show_error(&format!("Backend error: {}", e)),
-        Err(e) => io.show_error(&format!("{}", e)),
+        Err(e) => error!("{e}"),
     }
 }
 
-// Handle "update note" menu option
+/// Prompt for note ID, updated fields, and apply update
+///
+/// # Parameters
+///
+/// - `io`: I/O implementation
+/// - `service`: Note service backend
+///
+/// # Panics
+///
+/// If reading name or content fails unexpectedly
 fn handle_update(io: &impl IO, service: &NoteService) {
     io.show_title("Update note");
 
@@ -207,13 +250,13 @@ fn handle_update(io: &impl IO, service: &NoteService) {
         let id = match input.parse::<u16>() {
             Ok(id) => id,
             Err(e) => {
-                io.show_error(&format!("{}", e));
+                error!("{e}");
                 continue;
             }
         };
         match service.read_note(id) {
             Ok(note) => break note,
-            Err(e) => io.show_error(&format!("{}", e)),
+            Err(e) => error!("{e}"),
         };
     };
 
@@ -222,10 +265,10 @@ fn handle_update(io: &impl IO, service: &NoteService) {
         let input = io.get_input().expect("Failed getting note name");
         match NoteService::validate_name(&input, service.max_name_size) {
             Ok(()) => {
-                io.show_trace(&format!("Got valid name: {}", &input));
+                trace!("Got valid name: {}", &input);
                 break input;
             }
-            Err(e) => io.show_error(&format!("Got invalid name: {}", e)),
+            Err(e) => error!("Got invalid name: {}", e),
         }
     };
 
@@ -237,10 +280,10 @@ fn handle_update(io: &impl IO, service: &NoteService) {
             .expect("Failed getting note content");
         match NoteService::validate_content(&input, service.max_content_size) {
             Ok(()) => {
-                io.show_trace(&format!("Got valid content: {}", &input));
+                trace!("Got valid content: {}", &input);
                 break input;
             }
-            Err(e) => io.show_error(&format!("Got invalid content: {}", e)),
+            Err(e) => error!("Got invalid content: {}", e),
         }
     };
 
@@ -248,13 +291,21 @@ fn handle_update(io: &impl IO, service: &NoteService) {
     note.content = content;
 
     match service.update_note(note) {
-        Ok(()) => io.show_info("Successfully updated note"),
-        Err(NoteError::Backend(e)) => io.show_error(&format!("Backend error {}", e)),
-        Err(e) => io.show_error(&format!("{}", e)),
+        Ok(()) => info!("Successfully updated note"),
+        Err(e) => error!("{e}"),
     };
 }
 
-// Handle "delete note" menu option with confirmation prompt
+/// Prompt for note ID, confirm deletion, and delete
+///
+/// # Parameters
+///
+/// - `io`: I/O implementation
+/// - `service`: Note service backend
+///
+/// # Panics
+///
+/// If reading confirmation fails unexpectedly
 fn handle_delete(io: &impl IO, service: &NoteService) {
     io.show_title("Delete note");
 
@@ -263,7 +314,7 @@ fn handle_delete(io: &impl IO, service: &NoteService) {
         let input = io.get_input().expect("Failed getting note ID");
         match input.parse::<u16>() {
             Ok(id) => break id,
-            Err(e) => io.show_error(&format!("{}", e)),
+            Err(e) => error!("{e}"),
         }
     };
 
@@ -273,39 +324,44 @@ fn handle_delete(io: &impl IO, service: &NoteService) {
         match input.to_lowercase().as_str() {
             "y" | "ye" | "yes" | "ya" | "yuh" | "yarr" | "fuck yeah" => break,
             "n" | "nu uh" | "no" | "nah" | "hell naw" | "get yo bitchass outta here" => {
-                io.show_info(&format!("Exiting. Not deleting note with ID: {}", id));
+                info!("Exiting. Not deleting note with ID: {}", id);
                 return;
             }
-            _ => continue,
+            _ => warn!("Invalid input. Please enter 'y' or 'n'"),
         }
     }
 
     match service.delete_note(id) {
-        Ok(()) => io.show_info(&format!("Successfully deleted note with ID: {}", id)),
-        Err(NoteError::Backend(e)) => io.show_error(&format!("Backend error {}", e)),
-        Err(e) => io.show_error(&format!("{}", e)),
+        Ok(()) => info!("Successfully deleted note with ID: {}", id),
+        Err(e) => error!("{e}"),
     };
 }
 
-// Handle "list notes" menu option
+/// Fetch all notes and display in a table
+///
+/// # Parameters
+///
+/// - `io`: Console I/O implementation
+/// - `service`: Note service backend
 fn handle_list(io: &impl IO, service: &NoteService) {
     let partial_notes: Vec<PartialNote> = match service.list_notes() {
         Ok(n) => n,
         Err(e) => {
-            io.show_error(&format!("{}", e));
+            error!("{e}");
             return;
         }
     };
-    io.show_table(partial_notes);
+    io.show_notes_list(partial_notes);
 }
 
-// Handle "add note with flag" menu option
-fn handle_add_flag(io: &impl IO, service: &NoteService) {
+/// Create a note containing the flag via service
+///
+/// # Parameters
+///
+/// - `service`: Note service backend
+fn handle_add_flag(service: &NoteService) {
     match service.create_flag_note() {
-        Ok(id) => io.show_info(&format!(
-            "Successfully added note containing flag, with ID: {}",
-            id
-        )),
-        Err(e) => io.show_error(&format!("Failed adding note containing flag: {}", e)),
+        Ok(id) => info!("Successfully added note containing flag, with ID: {}", id),
+        Err(e) => error!("Failed adding note containing flag: {}", e),
     }
 }

@@ -1,5 +1,10 @@
-use nnsctf_pwn_1::ui::input;
+use noters::ui::io;
 
+/// Application entry point
+///
+/// # Behavior
+///
+/// Invokes the I/O run loop to start the note-taking interface
 fn main() {
-    input::run();
+    io::run();
 }

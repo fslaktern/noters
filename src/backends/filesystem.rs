@@ -1,10 +1,20 @@
-use super::*;
+use super::{Note, NoteBackend, PartialNote, Result};
 
 #[derive(Debug)]
 pub struct FilesystemBackend {}
 
 impl FilesystemBackend {
-    pub fn new(path: String) -> Self {
+    /// Creates a new instance of the `FilesystemBackend`.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - A `String` representing the path to the notes storage (currently unused).
+    ///
+    /// # Returns
+    ///
+    /// A new `FilesystemBackend` instance.
+    #[must_use]
+    pub fn new(path: &str) -> Self {
         dbg!(&path);
         Self {}
     }
@@ -46,27 +56,6 @@ impl NoteBackend for FilesystemBackend {
     }
 
     fn list(&self) -> Result<Vec<PartialNote>> {
-        Ok(vec![
-            PartialNote {
-                id: 0,
-                name: "Hello world".to_string(),
-                owner: "ctf".to_string(),
-            },
-            PartialNote {
-                id: 1,
-                name: "Flag!".to_string(),
-                owner: "".to_string(),
-            },
-            PartialNote {
-                id: 2,
-                name: "Diary".to_string(),
-                owner: "superman".to_string(),
-            },
-            PartialNote {
-                id: 3,
-                name: "Passwords".to_string(),
-                owner: "fslaktern".to_string(),
-            },
-        ])
+        Ok(vec![])
     }
 }

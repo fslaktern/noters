@@ -1,5 +1,11 @@
 [package]
-name = "nnsctf-pwn-1"
+name = "noters"
+description = "Blazingly fast, 100% memory-safe, CRUD-compliant, cross platform and private note"
+license = "WTFPL"
+keywords = ["noters", "notes", "cli", "hexagonal", "ctf"]
+categories = ["notes", "cli", "hexagonal", "ctf"]
+repository = "https://github.com/fslaktern/noters"
+
 version = "0.1.0"
 edition = "2024"
 
@@ -18,14 +24,3 @@ log = "0.4.27"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 tabled = "0.20.0"
 thiserror = "2.0.12"
-
-[clippy.lints]
-cargo = { priority = -1, level = "deny" }
-complexity = { priority = -1, level = "deny" }
-correctness = { priority = -1, level = "deny" }
-nursery = { priority = -1, level = "deny" }
-pedantic = { priority = -1, level = "deny" }
-perf = { priority = -1, level = "deny" }
-restriction = { priority = -1, level = "deny" }
-style = { priority = -1, level = "deny" }
-suspicious = { priority = -1, level = "deny" }
