@@ -1,5 +1,4 @@
-use crate::{backends::NoteRepository, Note, PartialNote};
-use nnsctf_pwn_1::{NoteError, RepositoryError, Result};
+use super::*;
 use rusqlite::{params, Connection, Error as SqliteError, ErrorCode, OptionalExtension};
 
 #[derive(Debug)]
@@ -30,32 +29,32 @@ impl SqliteBackend {
     }
 }
 
-// Maps rusqlite errors into RepositoryError
-// Can't Impl From when RepositoryError belongs to another file, so this'll do
+// Maps rusqlite errors into BackendError
+// Can't Impl From when BackendError belongs to another file, so this'll do
 fn map_sqlite_error(e: rusqlite::Error) -> NoteError {
     match e {
         SqliteError::SqliteFailure(code, _) => match code.code {
-            ErrorCode::DatabaseBusy => NoteError::Repository(RepositoryError::Timeout),
-            ErrorCode::PermissionDenied => NoteError::Repository(RepositoryError::PermissionDenied),
+            ErrorCode::DatabaseBusy => NoteError::Backend(BackendError::Timeout),
+            ErrorCode::PermissionDenied => NoteError::Backend(BackendError::PermissionDenied),
             ErrorCode::NotADatabase => {
-                NoteError::Repository(RepositoryError::Other(anyhow::anyhow!("Not a database")))
+                NoteError::Backend(BackendError::Other(anyhow::anyhow!("Not a database")))
             }
             ErrorCode::SchemaChanged => {
-                NoteError::Repository(RepositoryError::Other(anyhow::anyhow!("Schema changed")))
+                NoteError::Backend(BackendError::Other(anyhow::anyhow!("Schema changed")))
             }
-            _ => NoteError::Repository(RepositoryError::Other(anyhow::anyhow!(
+            _ => NoteError::Backend(BackendError::Other(anyhow::anyhow!(
                 "SQLite error: {:?}",
                 code
             ))),
         },
         SqliteError::QueryReturnedNoRows => {
-            NoteError::Repository(RepositoryError::Other(anyhow::anyhow!("No rows found")))
+            NoteError::Backend(BackendError::Other(anyhow::anyhow!("No rows found")))
         }
-        other => NoteError::Repository(RepositoryError::Other(anyhow::Error::new(other))),
+        other => NoteError::Backend(BackendError::Other(anyhow::Error::new(other))),
     }
 }
 
-impl NoteRepository for SqliteBackend {
+impl NoteBackend for SqliteBackend {
     fn create(&self, note: Note) -> Result<u16> {
         self.connection
             .execute(
@@ -82,7 +81,7 @@ impl NoteRepository for SqliteBackend {
             )
             .optional()
             .map_err(map_sqlite_error)?
-            .ok_or(NoteError::Repository(RepositoryError::NoRows(id)))
+            .ok_or(NoteError::Backend(BackendError::NoRows(id)))
     }
 
     fn read_partial(&self, id: u16) -> Result<PartialNote> {
@@ -100,7 +99,7 @@ impl NoteRepository for SqliteBackend {
             )
             .optional()
             .map_err(map_sqlite_error)?
-            .ok_or(NoteError::Repository(RepositoryError::NoRows(id)))
+            .ok_or(NoteError::Backend(BackendError::NoRows(id)))
     }
 
     fn update(&self, note: Note) -> Result<()> {
@@ -113,7 +112,7 @@ impl NoteRepository for SqliteBackend {
             .map_err(map_sqlite_error)?;
 
         if rows == 0 {
-            Err(NoteError::Repository(RepositoryError::NoRows(note.id)))
+            Err(NoteError::Backend(BackendError::NoRows(note.id)))
         } else {
             Ok(())
         }
@@ -126,7 +125,7 @@ impl NoteRepository for SqliteBackend {
             .map_err(map_sqlite_error)?;
 
         if rows == 0 {
-            Err(NoteError::Repository(RepositoryError::NoRows(id)))
+            Err(NoteError::Backend(BackendError::NoRows(id)))
         } else {
             Ok(())
         }

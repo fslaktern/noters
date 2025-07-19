@@ -1,5 +1,6 @@
-use crate::backends::{FilesystemBackend, NoteRepository, SqliteBackend};
-use crate::NoteService;
+use crate::app::NoteService;
+use crate::backends::{FilesystemBackend, SqliteBackend};
+use crate::NoteBackend;
 
 use clap::{Parser, Subcommand};
 use log::error;
@@ -41,8 +42,8 @@ pub fn handle_args() -> NoteService {
 
     dbg!(&args);
 
-    // Allow any struct that implements NoteRepository, and store on heap because size is unknown at compile time
-    let repo: Box<dyn NoteRepository> = match args.backend {
+    // Allow any struct that implements NoteBackend, and store on heap because size is unknown at compile time
+    let repo: Box<dyn NoteBackend> = match args.backend {
         Backend::Filesystem { path } => Box::new(FilesystemBackend::new(path)),
         Backend::Sqlite { path } => Box::new(SqliteBackend::new(path)),
     };

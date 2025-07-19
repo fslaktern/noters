@@ -9,7 +9,7 @@
 - 100% safe Rust = no memory errors
 - Privacy thanks to separation of ownership
 
-## Available adapters
+## Available backends
 
 - Filesystem
 - SQLite
@@ -30,6 +30,7 @@ noters --user "$USER" filesystem --path "./notes"
 - Difficulty: medium
 - Category: pwn
 - Program init:
-    ````sh
-    noters --user 'ctf' sqlite --path 'notes.db' --max-name-size 8 --max-content-size 128 --max-note-count 8
-    ``
+
+    ```sh
+    noters --user "ctf" --max-name-size 8 --max-content-size 128 --max-note-count 8 sqlite --path "notes.db"
+    ```

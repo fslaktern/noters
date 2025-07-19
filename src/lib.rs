@@ -1,8 +1,40 @@
 use std::io;
+use tabled::Tabled;
 use thiserror::Error;
+
+pub mod app;
+pub mod backends;
+pub mod setup;
+pub mod ui;
 
 // More convenient Result type
 pub type Result<T> = std::result::Result<T, NoteError>;
+
+#[derive(Tabled, Debug)]
+pub struct Note {
+    pub id: u16,
+    pub owner: String,
+    pub name: String,
+    pub content: String,
+}
+
+// Partial note data. Displayed in lists and for shallow reads
+#[derive(Tabled)]
+pub struct PartialNote {
+    pub id: u16,
+    pub owner: String,
+    pub name: String,
+}
+
+// Trait to be implemented by all backends
+pub trait NoteBackend {
+    fn create(&self, note: Note) -> Result<u16>;
+    fn read(&self, id: u16) -> Result<Note>;
+    fn read_partial(&self, id: u16) -> Result<PartialNote>;
+    fn update(&self, note: Note) -> Result<()>;
+    fn delete(&self, id: u16) -> Result<()>;
+    fn list(&self) -> Result<Vec<PartialNote>>;
+}
 
 // Enum for all possible validation or repository-related errors
 #[derive(Debug, Error)]
@@ -11,7 +43,7 @@ pub enum NoteError {
     Validation(#[from] NoteValidationError),
 
     #[error(transparent)]
-    Repository(#[from] RepositoryError),
+    Backend(#[from] BackendError),
 
     #[error(transparent)]
     Menu(#[from] MenuError),
@@ -25,8 +57,12 @@ pub enum NoteError {
 pub enum MenuError {
     #[error("Failed to read from stdin: {0}")]
     StdinReadError(io::Error),
-    #[error("Invalid input. Please enter a number 1-6")]
-    ParseError,
+    #[error("Couldn't convert '{0}' to a number. Please enter a number 1-6")]
+    ParseError(String),
+    #[error("Couldn't convert '{0}' to a MenuOption. Please enter a number 1-6")]
+    InvalidOption(u8),
+    #[error("Failed writing to stdout")]
+    StdoutWriteError(io::Error),
 }
 
 // Enum for all possible data and input validation errors
@@ -62,7 +98,7 @@ pub enum NoteValidationError {
 
 // Enum for all possible repository/backend errors
 #[derive(Debug, Error)]
-pub enum RepositoryError {
+pub enum BackendError {
     #[error("Database file not found")]
     DatabaseNotFound,
 

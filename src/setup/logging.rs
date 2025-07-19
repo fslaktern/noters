@@ -1,9 +1,9 @@
-use colored::*;
+use colored::Colorize;
 use env_logger::Builder;
 use log::LevelFilter;
 use std::io::Write;
 
-pub fn setup() {
+pub fn setup_log() {
     let default_log_level = LevelFilter::Debug;
     let mut builder = Builder::from_default_env();
 

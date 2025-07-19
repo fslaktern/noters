@@ -1,5 +1,4 @@
-use crate::{backends::NoteRepository, Note, PartialNote};
-use nnsctf_pwn_1::Result;
+use super::*;
 
 #[derive(Debug)]
 pub struct FilesystemBackend {}
@@ -11,7 +10,7 @@ impl FilesystemBackend {
     }
 }
 
-impl NoteRepository for FilesystemBackend {
+impl NoteBackend for FilesystemBackend {
     fn create(&self, note: Note) -> Result<u16> {
         dbg!(&note);
         Ok(0)
