@@ -138,9 +138,6 @@ pub enum NoteValidationError {
 
     #[error("Reference not found with ID: {0}")]
     ReferenceNotFound(u16),
-
-    #[error("The chosen username is too long. It should be less than or equal to 32 characters")]
-    UsernameTooLong,
 }
 
 // Enum for all possible repository/backend errors

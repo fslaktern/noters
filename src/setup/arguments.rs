@@ -44,11 +44,6 @@ enum Backend {
 pub fn handle_args() -> Result<NoteService> {
     let args = Args::parse();
 
-    // Hard limit on 32 characters per username
-    if args.user.len() > 32 {
-        return Err(NoteError::Validation(NoteValidationError::UsernameTooLong));
-    }
-
     // Allow any struct that implements NoteBackend, and store on heap because size is unknown at compile time
     let repo: Box<dyn NoteBackend> = match args.backend {
         Backend::Filesystem { path } => Box::new(FilesystemBackend::new(&path)?),
