@@ -1,10 +1,15 @@
-use noters::ui::io;
+use log::error;
+use noters::{
+    setup::{arguments, logging},
+    ui::io,
+};
 
-/// Application entry point
-///
-/// # Behavior
-///
-/// Invokes the I/O run loop to start the note-taking interface
 fn main() {
-    io::run()
+    logging::setup_log();
+    let service = arguments::handle_args().unwrap_or_else(|e| {
+        error!("Failed initializing backend: {e}");
+        panic!()
+    });
+
+    io::run(service)
 }

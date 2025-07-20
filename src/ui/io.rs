@@ -1,6 +1,5 @@
 use super::{MenuError, NoteError, PartialNote, Result};
 use crate::app::NoteService;
-use crate::setup::{arguments, logging};
 use crate::ui::cli;
 
 use colored::Colorize;
@@ -142,12 +141,7 @@ fn handle_menu_option(io: &impl IO, service: &NoteService, option: MenuOption) {
 /// # Errors
 ///
 /// Logs `MenuError` variants but never returns
-pub fn run() {
-    logging::setup_log();
-    let service = match arguments::handle_args() {
-        Ok(s) => s,
-        Err(e) => panic!("Failed initializing backend: {e}"),
-    };
+pub fn run(service: NoteService) {
     let io = cli::Cli;
     println!();
 

@@ -1,6 +1,6 @@
 use crate::app::NoteService;
 use crate::backends::{FilesystemBackend, SqliteBackend};
-use crate::{NoteBackend, NoteError, NoteValidationError, Result};
+use crate::{NoteBackend, Result};
 
 use clap::{Parser, Subcommand};
 
