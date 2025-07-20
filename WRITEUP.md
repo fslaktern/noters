@@ -9,7 +9,7 @@
 
 ## Vulnerability
 
-A logic flaw in the `delete_note()` function in `app.rs`(line 197) introduces a high-level use-after-free vulnerability. The intention is to prevent deleting a note if it's referenced by another, but the code mistakenly checks the note being deleted for backlinks rather than other notes that may reference it. The diff shows a patch of `delete_note()`.
+A logic flaw in the `delete_note()` function in `app.rs`(line 201) introduces a high-level use-after-free vulnerability. The intention is to prevent deleting a note if it's referenced by another, but the code mistakenly checks the note being deleted for backlinks rather than other notes that may reference it. The diff shows a patch of `delete_note()`.
 
 ```diff
     // Delete note by ID
@@ -20,6 +20,11 @@ A logic flaw in the `delete_note()` function in `app.rs`(line 197) introduces a 
         for partial_note in self.list_notes()? {
             // Do not prevent deletion if note refers to itself
             if partial_note.id == id {
+                // While we're here: Check if user is the owner of the note
+                // Make sure they can't delete a note they don't own
+                if partial_note.owner != self.user {
+                    return Err(NoteValidationError::PermissionDenied(partial_note.id).into());
+                }
                 continue;
             }
 

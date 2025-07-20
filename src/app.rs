@@ -1,4 +1,5 @@
 use crate::{Note, NoteBackend, NoteError, NoteValidationError, PartialNote, Result};
+use log::debug;
 use std::collections::HashSet;
 
 pub struct NoteService {
@@ -186,6 +187,11 @@ impl NoteService {
         for partial_note in self.list_notes()? {
             // Do not prevent deletion if note refers to itself
             if partial_note.id == id {
+                // While we're here: Check if user is the owner of the note
+                // Make sure they can't delete a note they don't own
+                if partial_note.owner != self.user {
+                    return Err(NoteValidationError::PermissionDenied(partial_note.id).into());
+                }
                 continue;
             }
 
