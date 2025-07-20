@@ -9,7 +9,7 @@
 
 ## Vulnerability
 
-A logic flaw in the `delete_note()` function in `app.rs`(line 146) introduces a high-level use-after-free vulnerability. The intention is to prevent deleting a note if it's referenced by another, but the code mistakenly checks the note being deleted for backlinks rather than other notes that may reference it. The diff shows a patch of `delete_note()`.
+A logic flaw in the `delete_note()` function in `app.rs`(line 197) introduces a high-level use-after-free vulnerability. The intention is to prevent deleting a note if it's referenced by another, but the code mistakenly checks the note being deleted for backlinks rather than other notes that may reference it. The diff shows a patch of `delete_note()`.
 
 ```diff
     // Delete note by ID
@@ -45,12 +45,19 @@ A logic flaw in the `delete_note()` function in `app.rs`(line 146) introduces a 
     }
 ```
 
-This one-character mistake (`id` vs `partial_note.id`) means that backlink checks are ineffective - you can delete a note even if another note references it.
+This one-character mistake (`id` vs `partial_note.id`) means that backlink checks are ineffective - you can delete a note even if another note references it. A dangling reference.
 
-Additionally, `read_note()` in `app.rs` (line 80) fails to verify ownership for referenced notes. So if a user references a note they don't own, the system still resolves it.
+Additionally, `read_note()` in `app.rs` (line 112) fails to verify ownership for referenced notes. So if a user references a note they don't own, the system still resolves it.
 
 ```diff
-    // Read a full note and expand references (e.g. [[1]] expands to the name and content of note #1)
+    /// Reads a full note and expands any references in the content (e.g. `[[1]]` becomes the full text of note #1).
+    ///
+    /// # Errors
+    ///
+    /// Returns:
+    /// - `NoteValidationError::PermissionDenied` if the user does not own the note or a referenced note.
+    /// - `NoteValidationError::ReferenceNotFound` if a referenced note does not exist.
+    /// - Other repository errors if reading from the backend fails.
     pub fn read_note(&self, id: u16) -> Result<Note> {
         let mut note = self.repo.read(id)?;
 
