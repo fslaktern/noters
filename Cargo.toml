@@ -19,6 +19,7 @@ codegen-units = 1 # Minimize size
 anyhow = "1.0.98"
 clap = { version = "4.5.41", features = ["derive"] }
 colored = "3.0.0"
+dotenv = "0.15.0"
 env_logger = "0.11.8"
 log = "0.4.27"
 rusqlite = { version = "0.37.0", features = ["bundled"] }

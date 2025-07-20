@@ -6,6 +6,7 @@ use noters::{
 
 fn main() {
     logging::setup_log();
+    dotenv::dotenv().ok();
     let service = arguments::handle_args().unwrap_or_else(|e| {
         error!("Failed initializing backend: {e}");
         panic!()

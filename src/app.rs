@@ -220,6 +220,16 @@ impl NoteService {
     ///
     /// Panics if no available note ID is found, which should be logically impossible unless data corruption occurred.
     pub fn create_flag_note(&self) -> Result<u16> {
+        use std::env;
+
+        let flag = match env::var("FLAG") {
+            Ok(f) => f,
+            Err(_) => {
+                debug!("The `FLAG` environment variable isn't set. Using placeholder value.");
+                "NNSCTF{placeholder}".to_string()
+            }
+        };
+
         // Make sure not too many notes are created
         let notes = self.repo.list()?;
         if notes.len() > self.max_note_count as usize {
@@ -231,16 +241,16 @@ impl NoteService {
 
         // Find next free ID
         let used_ids: HashSet<u16> = notes.into_iter().map(|note| note.id).collect();
-        let Some(available_id) = (0..self.max_note_count).find(|id| !used_ids.contains(id)) else {
-            unreachable!();
-        };
+        let available_id = (0..self.max_note_count)
+            .find(|id| !used_ids.contains(id))
+            .expect("Available ID not found despite more space for more notes");
 
         // The creator is the owner
         let note = Note {
             id: available_id,
             owner: "Norske Nøkkelsnikere".to_string(),
             name: "flag".to_string(),
-            content: "NNSCTF{testing}".to_string(),
+            content: flag,
         };
 
         self.repo.create(note)
