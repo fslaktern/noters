@@ -1,4 +1,5 @@
 use super::{BackendError, Note, NoteBackend, NoteError, PartialNote, Result};
+use log::trace;
 use std::{
     fs::{self, File},
     io::{Read, Write},
@@ -20,6 +21,7 @@ impl FilesystemBackend {
         let base_path = PathBuf::from(path);
         fs::create_dir_all(&base_path)
             .map_err(|e| NoteError::Backend(BackendError::DirectoryCreationError(e)))?;
+        trace!("Created directory for notes: {}", &base_path.display());
         Ok(Self { base_path })
     }
 
@@ -54,7 +56,7 @@ impl FilesystemBackend {
                 files.push(entry.path());
             }
         }
-
+        trace!("Found notes: {:?}", &files);
         Ok(files)
     }
 }
@@ -76,9 +78,11 @@ impl NoteBackend for FilesystemBackend {
 
         let mut file = File::create(&path)
             .map_err(|e| NoteError::Backend(BackendError::FileCreationError(e)))?;
+        trace!("Created file: {}", &path.display());
         let data = format!("{}\n{}\n{}", note.name, note.owner, note.content);
         file.write_all(data.as_bytes())
             .map_err(|e| NoteError::Backend(BackendError::FileWriteError(e)))?;
+        trace!("Wrote data to file:\n{}", data);
         Ok(note.id)
     }
 
@@ -89,11 +93,12 @@ impl NoteBackend for FilesystemBackend {
     /// Returns:
     /// - `BackendError::NoteNotFound` if the note file does not exist
     /// - `BackendError::FileReadError` if the file cannot be read
-    /// - `BackendError::NoteCorrupted` if the file does not contain at least two lines (name and owner)
+    /// - `BackendError::NoteCorrupted` if the file does not contain at least three lines (name, owner and 1 line of content)
     fn read(&self, id: u16) -> Result<Note> {
         let path = self.note_path(id);
         let mut file =
             File::open(&path).map_err(|_| NoteError::Backend(BackendError::NoteNotFound(id)))?;
+        trace!("Opened file for note #{} for reading", &id);
 
         let mut contents = String::new();
         file.read_to_string(&mut contents)
@@ -124,13 +129,31 @@ impl NoteBackend for FilesystemBackend {
     ///
     /// # Errors
     ///
-    /// Returns the same errors as `read`, since it delegates to it
+    /// Returns:
+    /// - `BackendError::NoteNotFound` if the note file does not exist
+    /// - `BackendError::FileReadError` if the file cannot be read
+    /// - `BackendError::NoteCorrupted` if the file does not contain at least two lines (name and owner)
     fn read_partial(&self, id: u16) -> Result<PartialNote> {
-        let note = self.read(id)?;
+        let path = self.note_path(id);
+        let mut file =
+            File::open(&path).map_err(|_| NoteError::Backend(BackendError::NoteNotFound(id)))?;
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .map_err(|e| NoteError::Backend(BackendError::FileReadError(e)))?;
+
+        let mut lines = contents.lines();
+        let name = lines
+            .next()
+            .ok_or(NoteError::Backend(BackendError::NoteCorrupted))?;
+        let owner = lines
+            .next()
+            .ok_or(NoteError::Backend(BackendError::NoteCorrupted))?;
+
         Ok(PartialNote {
-            id: note.id,
-            name: note.name,
-            owner: note.owner,
+            id,
+            name: name.to_string(),
+            owner: owner.to_string(),
         })
     }
 
@@ -140,11 +163,11 @@ impl NoteBackend for FilesystemBackend {
     ///
     /// Returns:
     /// - `BackendError::NoteNotFound` if the note file does not exist
-    /// - `BackendError::FileCreationError` if the file cannot be reopened for writing
+    /// - `BackendError::FileCreationError` if the file cannot be created and opened
     /// - `BackendError::FileWriteError` if writing to the file fails
     fn update(&self, note: Note) -> Result<()> {
         let path = self.note_path(note.id);
-        if !path.exists() {
+        if !path.exists() || path.is_dir() {
             return Err(NoteError::Backend(BackendError::NoteNotFound(note.id)));
         }
 
@@ -160,10 +183,21 @@ impl NoteBackend for FilesystemBackend {
     ///
     /// # Errors
     ///
-    /// Returns `BackendError::NoteNotFound` if the file does not exist or cannot be removed
+    /// Returns:
+    /// - `BackenDError::PermissionDenied` if the file can't be deleted due to missing privileges
+    /// - `BackendError::NoteNotFound` if the file does not exist or the path is a directory
+    /// - `BackendError::Other` as a catch-all for other unexpected errors
     fn delete(&self, id: u16) -> Result<()> {
+        use std::io::ErrorKind;
+
         let path = self.note_path(id);
-        fs::remove_file(&path).map_err(|_| NoteError::Backend(BackendError::NoteNotFound(id)))
+        fs::remove_file(&path)
+            .map_err(|e| match e.kind() {
+                ErrorKind::PermissionDenied => BackendError::PermissionDenied,
+                ErrorKind::IsADirectory | ErrorKind::NotFound => BackendError::NoteNotFound(id),
+                _ => BackendError::Other(anyhow::anyhow!("Filesystem error: {:?}", e)),
+            })
+            .map_err(|e| NoteError::Backend(e))
     }
 
     /// Lists all notes in the filesystem by parsing their filenames and reading partial metadata
@@ -172,9 +206,9 @@ impl NoteBackend for FilesystemBackend {
     ///
     /// Returns an error if reading the list of note files fails
     ///
-    /// # Panics
+    /// # Note
     ///
-    /// Does not panic, and instead silently skips corrupt or unreadable notes
+    /// Silently skips corrupt or unreadable notes
     fn list(&self) -> Result<Vec<PartialNote>> {
         let mut notes = Vec::new();
 

@@ -1,4 +1,5 @@
 use super::{BackendError, Note, NoteBackend, NoteError, PartialNote, Result};
+use log::{debug, trace};
 use rusqlite::{params, Connection, Error as SqliteError, ErrorCode, OptionalExtension};
 
 #[derive(Debug)]
@@ -16,7 +17,8 @@ impl SqliteBackend {
     /// `BackendError::TableCreationError` if the `notes` table cannot be created.
     pub fn new(path: &str) -> Result<Self> {
         let connection = Connection::open(path)
-            .map_err(|_e| NoteError::Backend(BackendError::DatabaseCreationError))?;
+            .map_err(|_| NoteError::Backend(BackendError::DatabaseCreationError))?;
+        debug!("Opened connection to db: {}", &path);
 
         // Create notes table if it doesn't exist
         connection
@@ -32,6 +34,7 @@ impl SqliteBackend {
                 [],
             )
             .map_err(|_e| NoteError::Backend(BackendError::TableCreationError))?;
+        debug!("Initialized db with `notes` table");
         Ok(Self { connection })
     }
 }
@@ -76,6 +79,7 @@ impl NoteBackend for SqliteBackend {
                 params![note.id, note.name, note.owner, note.content],
             )
             .map_err(map_sqlite_error)?;
+        trace!("Created row with note data: {:?}", note);
         Ok(note.id)
     }
 
@@ -90,7 +94,7 @@ impl NoteBackend for SqliteBackend {
         self.connection
             .query_row(
                 "SELECT id, name, owner, content FROM notes WHERE id = ?1",
-                [id],
+                params![id],
                 |row| {
                     Ok(Note {
                         id: row.get(0)?,
@@ -116,7 +120,7 @@ impl NoteBackend for SqliteBackend {
         self.connection
             .query_row(
                 "SELECT id, name, owner FROM notes WHERE id = ?1",
-                [id],
+                params![id],
                 |row| {
                     Ok(PartialNote {
                         id: row.get(0)?,
