@@ -76,7 +76,8 @@ Additionally, `read_note()` in `app.rs` (line 112) fails to verify ownership for
         }
 
         // Mapping references to note contents: [[1]] -> "Some content"
-        let placeholders = Self::get_references(&note.content)
+        let placeholders = self
+            .get_references(&note.content)
             .into_iter()
             .map(|rid| match self.repo.read(rid) {
                 Ok(ref_note) => {
@@ -98,7 +99,7 @@ Additionally, `read_note()` in `app.rs` (line 112) fails to verify ownership for
                 }
                 Err(_) => Err(NoteValidationError::ReferenceNotFound(rid).into()),
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<(String, String)>>>()?;
 
         // Expanding references: [[1]] -> Note #1's content
         let expanded = placeholders
