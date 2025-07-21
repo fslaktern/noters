@@ -79,7 +79,7 @@ impl NoteBackend for SqliteBackend {
                 params![note.id, note.name, note.owner, note.content],
             )
             .map_err(map_sqlite_error)?;
-        trace!("Created row with note data: {:?}", note);
+        trace!("Created row with note data: {note:?}");
         Ok(note.id)
     }
 

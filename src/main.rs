@@ -12,5 +12,5 @@ fn main() {
         panic!()
     });
 
-    io::run(service)
+    io::run(&service)
 }

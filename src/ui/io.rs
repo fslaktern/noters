@@ -141,14 +141,14 @@ fn handle_menu_option(io: &impl IO, service: &NoteService, option: MenuOption) {
 /// # Errors
 ///
 /// Logs `MenuError` variants but never returns
-pub fn run(service: NoteService) {
+pub fn run(service: &NoteService) {
     let io = cli::Cli;
     println!();
 
     loop {
         io.show_menu(&ALL_MENU_OPTIONS);
         match get_menu_input(&io) {
-            Ok(opt) => handle_menu_option(&io, &service, opt),
+            Ok(opt) => handle_menu_option(&io, service, opt),
             Err(NoteError::Menu(e)) => error!("{e}\n"),
             Err(_) => unreachable!(),
         }
@@ -257,10 +257,10 @@ fn handle_read(io: &impl IO, service: &NoteService) {
 
             io.show_text(&"-".repeat(20));
             io.show_text(&title_text);
-            io.show_text(&"");
+            io.show_text("");
             io.show_text(&note.content);
             io.show_text(&"-".repeat(20));
-            io.show_text(&"");
+            io.show_text("");
         }
         Err(e) => error!("{e}\n"),
     }

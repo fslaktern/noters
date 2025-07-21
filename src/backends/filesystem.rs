@@ -82,7 +82,7 @@ impl NoteBackend for FilesystemBackend {
         let data = format!("{}\n{}\n{}", note.name, note.owner, note.content);
         file.write_all(data.as_bytes())
             .map_err(|e| NoteError::Backend(BackendError::FileWriteError(e)))?;
-        trace!("Wrote data to file:\n{}", data);
+        trace!("Wrote data to file:\n{}", &data);
         Ok(note.id)
     }
 
@@ -197,7 +197,7 @@ impl NoteBackend for FilesystemBackend {
                 ErrorKind::IsADirectory | ErrorKind::NotFound => BackendError::NoteNotFound(id),
                 _ => BackendError::Other(anyhow::anyhow!("Filesystem error: {:?}", e)),
             })
-            .map_err(|e| NoteError::Backend(e))
+            .map_err(NoteError::Backend)
     }
 
     /// Lists all notes in the filesystem by parsing their filenames and reading partial metadata

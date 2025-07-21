@@ -228,13 +228,10 @@ impl NoteService {
     pub fn create_flag_note(&self) -> Result<u16> {
         use std::env;
 
-        let flag = match env::var("FLAG") {
-            Ok(f) => f,
-            Err(_) => {
-                debug!("The `FLAG` environment variable isn't set. Using placeholder value.");
-                "NNS{placeholder}".to_string()
-            }
-        };
+        let flag = env::var("FLAG").unwrap_or_else(|_| {
+            debug!("The `FLAG` environment variable isn't set. Using placeholder value.");
+            "NNS{placeholder}".to_string()
+        });
 
         // Make sure not too many notes are created
         let notes = self.repo.list()?;
