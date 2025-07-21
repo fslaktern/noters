@@ -5,11 +5,9 @@
 - Name: Noters
 - Category: Pwn
 - Difficulty: Easy
-- Flag: `NNS{y0u_d1dnT_n33d_uns4f3_t0_uns4f3}` 
+- Flag: `NNS{y0u_d1dnT_n33d_uns4f3_t0_uns4f3}`
 - Description:
-
-    A blazingly-fast, memory-safe, CRUD-compatible note-taking app written in nearly 1000 lines of safe Rust. No unsafe and no memory errors, yet still a pwn challenge.
-    Everything looks safe. Everything compiles. Even clippy is happy. But something still _feels_ off, and it's not Rust's fault.
+    - A blazingly-fast, memory-safe, CRUD-compatible note-taking app written in nearly 1000 lines of safe Rust. No unsafe and no memory errors, yet still a pwn challenge. Everything looks safe. Everything compiles. Even clippy is happy. But something still _feels_ off, and it's not Rust's fault.
 
 ## Vulnerability
 
