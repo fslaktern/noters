@@ -4,7 +4,7 @@ description = "Blazingly fast, 100% memory-safe, CRUD-compliant, cross platform 
 license = "WTFPL"
 keywords = ["noters", "notes", "cli", "hexagonal", "ctf"]
 categories = ["notes", "cli", "hexagonal", "ctf"]
-
+repository = "https://github.com/Norske-Nokkelsnikere/ctf-v1/tree/main/challenges/pwn/noters"
 version = "0.1.0"
 edition = "2024"
 
