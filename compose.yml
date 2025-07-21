@@ -1,0 +1,11 @@
+---
+services:
+  noters:
+    build: .
+    image: noters_app:latest
+    container_name: noters
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    environment:
+      FLAG: "NNSCTF{super_secret_flag}"
