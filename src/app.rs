@@ -52,7 +52,7 @@ impl NoteService {
 
         // Make sure not too many notes are created
         let notes = self.repo.list()?;
-        if notes.len() > self.max_note_count as usize {
+        if notes.len() >= self.max_note_count as usize {
             return Err(NoteValidationError::NoteCountRateLimit {
                 max: self.max_note_count,
             }
@@ -238,7 +238,7 @@ impl NoteService {
 
         // Make sure not too many notes are created
         let notes = self.repo.list()?;
-        if notes.len() > self.max_note_count as usize {
+        if notes.len() >= self.max_note_count as usize {
             return Err(NoteValidationError::NoteCountRateLimit {
                 max: self.max_note_count,
             }
