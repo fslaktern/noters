@@ -1,6 +1,6 @@
 [package]
 name = "noters"
-description = "Blazingly fast, 100% memory-safe, CRUD-compliant, cross platform and private note"
+description = "Blazingly fast, 100% memory-safe, CRUD-compliant, cross platform and private note-taking app"
 license = "WTFPL"
 keywords = ["noters", "notes", "cli", "hexagonal", "ctf"]
 categories = ["notes", "cli", "hexagonal", "ctf"]
@@ -9,10 +9,11 @@ version = "0.1.0"
 edition = "2024"
 
 [profile.release]
-strip = true      # Strip symbols
-opt-level = "s"   # Optimize for smaller size
-lto = true        # Link time optimizations, longer compile but smaller size
-codegen-units = 1 # Minimize size
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "debuginfo"
+debug = false
 
 [dependencies]
 anyhow = "1.0.98"
