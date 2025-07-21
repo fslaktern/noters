@@ -124,8 +124,8 @@ pub enum NoteValidationError {
     #[error("Content is too large. Max: {max}, Got: {got}")]
     ContentTooLarge { max: u16, got: usize },
 
-    #[error("Note count rate limit exceeded. Max: {max}")]
-    NoteCountRateLimit { max: u16 },
+    #[error("You've hit the limit for how many notes you can have. Max: {max}")]
+    NoteCountLimit { max: u16 },
 
     #[error("Sorry! You're not the owner the note with ID: {0}")]
     PermissionDenied(u16),
