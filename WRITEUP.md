@@ -54,7 +54,7 @@ A logic flaw in the `delete_note()` function in `app.rs`(line 201) introduces a 
     }
 ```
 
-This one-character mistake (`id` vs `partial_note.id`) means that backlink checks are ineffective - you can delete a note even if another note references it. A dangling reference.
+This tiny mistake (`id` vs `partial_note.id`) means that backlink checks are ineffective, and you can delete a note even if another note references it. A dangling pointer.
 
 Additionally, `read_note()` in `app.rs` (line 112) fails to verify ownership for referenced notes. So if a user references a note they don't own, the system still resolves it.
 
