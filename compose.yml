@@ -7,3 +7,5 @@ services:
     restart: unless-stopped
     environment:
       FLAG: "NNSCTF{super_secret_flag}"
+    ports:
+      - "31337:1337"
