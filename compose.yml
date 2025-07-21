@@ -6,6 +6,6 @@ services:
     container_name: noters
     restart: unless-stopped
     environment:
-      FLAG: "NNSCTF{super_secret_flag}"
+      FLAG: "NNS{placeholder_flag}"
     ports:
       - "31337:1337"

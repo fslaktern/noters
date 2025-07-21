@@ -232,7 +232,7 @@ impl NoteService {
             Ok(f) => f,
             Err(_) => {
                 debug!("The `FLAG` environment variable isn't set. Using placeholder value.");
-                "NNSCTF{placeholder}".to_string()
+                "NNS{placeholder}".to_string()
             }
         };
 
