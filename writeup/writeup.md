@@ -1,1 +1,1 @@
-Moved to my website: <https://stromlarsen.com/writeups/2025/noters/>
+Moved to my website: <https://stromlarsen.com/2025/01/01/noters/>
